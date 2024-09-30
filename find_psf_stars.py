@@ -24,7 +24,7 @@ LST1_LAT = 28.761526
 warnings.simplefilter("ignore", ErfaWarning)
 
 parser = ArgumentParser()
-parser.add_argument("-t", "--time", type=Time)
+parser.add_argument("-t", "--time", type=Time, help="Observation time, if not given, the default is 'now'")
 parser.add_argument("-m", "--max-magnitude", default=2.0, help="Maximum allowed magnitude", type=float)
 parser.add_argument("-v", "--verbose", default=0, action="count")
 parser.add_argument("--min-zenith", default=5, type=float, help="Minimum zenith distance in degrees")
@@ -59,13 +59,16 @@ def get_hipparcos_stars(max_magnitude):
 
     if CACHE_FILE.exists():
         log.info("Loading stars from cached table")
-        stars = Table.read(CACHE_FILE)
-        if stars.meta["max_magnitude"] >= max_magnitude:
-            log.debug(f"Loaded table is valid for {max_magnitude = }")
-        else:
-            log.debug("Loaded cache table has smaller max_magnitude, reloading")
-            stars = None
-    
+        try:
+            stars = Table.read(CACHE_FILE)
+            if stars.meta["max_magnitude"] >= max_magnitude:
+                log.debug(f"Loaded table is valid for {max_magnitude = }")
+            else:
+                log.debug("Loaded cache table has smaller max_magnitude, reloading")
+                stars = None
+        except Exception:
+            log.exception("Cache file exists but reading failed. Recreating")
+
     if stars is None:
         log.info("Querying Vizier for Hipparcos catalog")
         # query vizier for stars with 0 <= Vmag <= max_magnitude
@@ -79,7 +82,7 @@ def get_hipparcos_stars(max_magnitude):
 
         # add the nice names
         common_names = read_ident_name_file(ident=6)
-        flamsteed_designation = read_ident_name_file(ident=4, colname="flamsteed_designation")
+        flamsteed_designation = read_ident_name_file(ident=4, colname="flamsteed")
 
         common_names = join(common_names, flamsteed_designation, keys="HIP", join_type="outer")
 
@@ -126,7 +129,7 @@ def get_psf_stars(stars, obstime, location, min_zenith=5 * u.deg, max_zenith=45 
 
     candidates.sort(["Vmag", "zd"])
     candidates["zd"].info.format = ".1f"
-    return candidates[["HIP", "name", "flamsteed_designation", "Vmag", "zd"]]
+    return candidates[["HIP", "name", "flamsteed", "Vmag", "zd"]]
 
 
 
