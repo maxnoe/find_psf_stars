@@ -125,17 +125,19 @@ def get_psf_stars(stars, obstime, location, min_zenith=5 * u.deg, max_zenith=45 
     # find low zenith, bright stars
     valid_zd = (altaz.zen > min_zenith) & (altaz.zen < max_zenith)
     candidates = stars[valid_zd].copy()
-    candidates["zd"] = altaz.zen[valid_zd]
+    candidates["alt"] = altaz.alt[valid_zd].to(u.deg)
+    candidates["az"] = altaz.az[valid_zd].to(u.deg)
+    candidates["zd"] = altaz.zen[valid_zd].to(u.deg)
 
     candidates.sort(["Vmag", "zd"])
-    candidates["zd"].info.format = ".1f"
-    return candidates[["HIP", "name", "flamsteed", "Vmag", "zd"]]
-
+    for col in ('alt', 'az', 'zd'):
+        candidates[col].info.format = ".1f"
+    return candidates[["HIP", "name", "flamsteed", "Vmag", "alt", "az", "zd"]]
 
 
 def main(args=None):
     args = parser.parse_args(args)
-    
+
     level = logging.WARNING
     if args.verbose == 1:
         level = logging.INFO
